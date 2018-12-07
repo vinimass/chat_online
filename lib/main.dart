@@ -1,10 +1,13 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 
 void main() async {
   //Firestore.instance.collection("teste").document("teste").setData({"teste" : "teste"});
@@ -16,7 +19,7 @@ void main() async {
     print(doc.documentID);
   }*/
 
-  Firestore.instance.collection("mensagens").snapshots().listen((snapshot) {
+  Firestore.instance.collection("messages").snapshots().listen((snapshot) {
     for (DocumentSnapshot doc in snapshot.documents) {
       print(doc.documentID);
     }
@@ -169,7 +172,13 @@ class _TextComposerState extends State<TextComposer> {
           children: <Widget>[
             Container(
               child:
-                  IconButton(icon: Icon(Icons.photo_camera), onPressed: () {}),
+                  IconButton(icon: Icon(Icons.photo_camera), onPressed: () async {
+                    await _ensureLoggedIn();
+                    File imgFile = await ImagePicker.pickImage(source: ImageSource.camera);
+                    if(imgFile == null) return;
+                    StorageUploadTask task = FirebaseStorage.instance.ref().child(googleSignIn.currentUser.id.toString() + DateTime.now().millisecondsSinceEpoch.toString()).putFile(imgFile);
+                    _sendMessage(imageUrl: (await task.future).downloadUrl.toString());
+                  }),
             ),
             Expanded(
               child: TextField(
@@ -241,7 +250,7 @@ class ChatMessage extends StatelessWidget {
                 Container(
                   margin: const EdgeInsets.only(top: 5.0),
                   child: data["imageUrl"] != null ?
-                  Image.network(data["imgUrl"], width: 250.0,) : Text(data["text"]),
+                  Image.network(data["imageUrl"], width: 250.0,) : Text(data["text"]),
                 )
               ],
             ),
